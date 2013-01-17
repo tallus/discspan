@@ -4,7 +4,7 @@ __author__ = "James S. Martin"
 __maintainer__ = "Richard M. Shaw"
 __credits__ = "Doc, Dez, Erin, Jason, Adam"
 __license__ = "GPL"
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 import os
 import sys
@@ -31,24 +31,8 @@ class Config:
         self.media = self.config.options('media')
         self.speed = self.config.get('drive', 'speed')
 
-    def convert_to_bytes(self,value):
-
-        if value[-1:] == 'M':
-            s_value = value.replace('M','')
-            b_value = Decimal(s_value) * 2**20
-
-        elif value[-1:] == 'G':
-            s_value = value.replace('G','')
-            b_value = Decimal(s_value) * 2**30
-
-        else:
-            print "Size does matter. Make sure you've specified a M or G after your media config file."
-            sys.exit(1)
-
-        return str(b_value)
-
     def get_capacity(self, medium):
-        "Returns capacity of disc type in both human readable and in bytes."
+        "Returns a tuple of capacity of disc type in both human readable and in bytes."
 
         h_capacity, b_capacity = string.split(self.config.get('media', medium))
 
@@ -57,11 +41,28 @@ class Config:
 
 class Drive:
 
-    def __init__(self, device_name, capacity, drive_name):
+    def __init__(self, config, device_name, drive_name):
+        "Class which contains drive and media logic and functions."
 
+        self.config = config
         self.device = device_name
-        self.capacity = capacity
         self.model = drive_name
+    
+    def check_capacity(self):
+        
+        if options.force_media_type:
+            medium = options.force_media_type
+            h_capacity, b_capacity = self.config.get_capacity(medium)
+        else:
+            b_capacity = dev.GetProperty('volume.disc.capacity')
+            h_capacity = str(b_capacity/(2**20)) + 'M'
+
+        if options.size_factor == None:
+            capacity = b_capacity
+        else:
+            self.capacity = int(b_capacity * float(options.size_factor))
+            print "Adjusted disc capacity set to: " + str(self.capacity)
+
 
 class System:
 
@@ -102,10 +103,9 @@ class System:
             else:
                 parent_obj = bus.get_object('org.freedesktop.Hal', dev.GetProperty("info.parent"))
                 parent = dbus.Interface(parent_obj, 'org.freedesktop.Hal.Device')
-                h_capacity , b_capacity = self.config.get_capacity(dev.GetProperty('volume.disc.type'))
                 drive_name = parent.GetProperty('info.product')
-                drive = Drive(device_name, b_capacity, drive_name)
-                print "The disc capacity of the disc in %s (%s) is %s." % (drive.device, drive.model, h_capacity)
+                drive = Drive(self.config, device_name, drive_name)
+                print "The disc capacity of the disc in %s (%s) is %s." % (drive.device, drive.model, drive.capacity)
                 drives.append(drive)
 
         if len(drives) == 1:
@@ -135,6 +135,7 @@ class System:
                 sys.exit(1)
 
         return drive
+
 
 class Interface:
 
@@ -194,11 +195,7 @@ class Iso:
 
     def build_list(self, files):
 
-        disc_capacity = int(float(self.drive.capacity) * float(options.size_factor))
-        print "Disc capacity reported by drive is: " + str(int(self.drive.capacity))
-        if options.size_factor != 1:
-            print " Adjusted disc capacity set to: " + str(disc_capacity)
-
+        disc_capacity = self.drive.capacity
         print "Building file lists..."
         file_count = 1
         # First 32768 bytes are unused by ISO 9660
@@ -210,7 +207,7 @@ class Iso:
         for file in files:
 
             if not os.path.islink(file):
-            # Add ISO 9660 file system overhead in addition to file size
+                # Estimate ISO 9660 file system overhead in addition to file size
                 file_size = 33 + len(os.path.split(file)[1]) + os.path.getsize(file)
                 # Round up file sizes to 2KB sector size for ISO 9660.
                 iso_size = math.ceil(file_size/(2.0**11))*(2.0**11)
@@ -239,7 +236,7 @@ class Iso:
         total_size = 32768
         # Attempt to predict metadata size (file & directory descriptors)
         descriptor_size = 0
-        disc_capacity = int(float(self.drive.capacity) * float(options.size_factor))
+        disc_capacity = self.drive.capacity
 
         if dir[len(dir)-1:] != "/":
             dir = dir + "/"
@@ -275,11 +272,11 @@ class Iso:
 
         num_discs = int(math.ceil(total_size/disc_capacity))
         discs = self.build_list(file_list)
-        print "\nNumber of %s's required to burn: %s" % ("dvd", len(discs))
+        print "\nNumber of discs required to burn: %s" % len(discs)
         file_count = 0
 
         for disc in discs:
-            file_count = file_count + len(disc)
+            file_count += len(disc)
 
         print "\nSanity Check:\n"
         print "Total files in directory: ", len(file_list)
@@ -297,7 +294,7 @@ class Iso:
         if int(disc_num) > 1:
             input=raw_input("Press enter to continue...")
         speed = self.inputs.speed
-        drive = self.system.wait_for_media()
+        drive = self.system.wait_for_media() # Refinds media every disc. Is this necessary?
         dir = self.inputs.backup_dir
 
         list = ""
@@ -358,9 +355,11 @@ if __name__ == "__main__":
     parser.add_option("--volume-name",  dest="volume_name", metavar ="VOLUME_NAME",
                       default='DiscSpan', help="Name for the volume.")
     parser.add_option("--size-factor", dest="size_factor",
-                      default=1, help="Specify size factor for disc capacity, i.e. 1 = 100%", metavar="SIZE_FACTOR")
+                      default=None, help="Specify size factor for disc capacity, i.e. 1 = 100%", metavar="SIZE_FACTOR")
     parser.add_option("--iso-dir",  dest="iso_dir", metavar ="ISO_DIR",
                       default=False, help="Redirect iso generation to a directory. Filename will be generated from volume name.")
+    parser.add_option("--force-media-type", dest="media_type",
+                      default=None, help="Force media to type specified and skip automatic detection.", metavar="MEDIA_TYPE")
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose",
                       default=False, help="Extended verbosity", metavar="VERBOSE")
 

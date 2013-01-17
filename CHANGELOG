@@ -19,7 +19,7 @@ Fixed: Option "--test" option was broken in 0.2.1.
 
 Fixed: Don't eject tray when --test or --iso-dir options are used.
 
-Fixed: Cleaned up drive/media detection code a little and added more meaninful output. NOTE: On my system HAL does not get updated properly and causes issues detecting media. 
+Fixed: Cleaned up drive/media detection code a little and added more meaninful output. NOTE: On my system HAL does not get updated properly and causes issues detection media. 
 
 Added: Option "--skip-big" was added to optionally skip files that were too big for ISO 9660 or recording media (CDs) instead of exiting.
 
