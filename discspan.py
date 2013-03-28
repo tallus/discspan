@@ -324,7 +324,7 @@ class Iso:
         output = open(temp_list, 'w')
         output.write(list)
         output.close()
-
+q
         if test :
             print 'Test write option enabled.'
             drive = '/dev/null'
@@ -336,9 +336,14 @@ class Iso:
             if iso_dir[len(iso_dir)-1:] != "/":
                 iso_dir += "/"
             iso_file = iso_dir + volume_name + ".iso"
-            burn_cmd = "mkisofs -o %s -V %s -A DiscSpan -p Unknown" \
+            if which('mkisofs'):
+                burn_prog = mkisofs
+            else:
+                burn_prog = genisoimage
+            burn_cmd = "%s -o %s -V %s -A DiscSpan -p Unknown" \
                        " -iso-level 4 -l -r -hide-rr-moved -J -joliet-long" \
-                       " -graft-points" % (iso_file, volume_name)
+                       " -graft-points" % (burn_prog, fork
+                               iso_file, volume_name)
         else :
             burn_cmd = "growisofs -Z %s -speed=%s -use-the-force-luke=notray" \
                        " -use-the-force-luke=tty  " \
@@ -355,6 +360,46 @@ class Iso:
             p = subprocess.Popen("%s" % ("eject"), shell=True)
             sts = os.waitpid(p.pid, 0)
             sleep(5)
+
+
+def which(name, flags=os.X_OK):
+    # Taken from procutils.py, part of twisted
+    # Copyright (c) 2001-2004 Twisted Matrix Laboratories.
+    # Orignally MIT licensed
+    """Search PATH for executable files with the given name.
+    
+    On newer versions of MS-Windows, the PATHEXT environment variable will be
+    set to the list of file extensions for files considered executable. This
+    will normally include things like ".EXE". This fuction will also find files
+    with the given name ending with any of these extensions.
+
+    On MS-Windows the only flag that has any meaning is os.F_OK. Any other
+    flags will be ignored.
+    
+    @type name: C{str}
+    @param name: The name for which to search.
+    
+    @type flags: C{int}
+    @param flags: Arguments to L{os.access}.
+    
+    @rtype: C{list}
+    @param: A list of the full paths to files found, in the
+    order in which they were found.
+    """
+    result = []
+    exts = filter(None, os.environ.get('PATHEXT', '').split(os.pathsep))
+    path = os.environ.get('PATH', None)
+    if path is None:
+        return []
+    for p in os.environ.get('PATH', '').split(os.pathsep):
+        p = os.path.join(p, name)
+        if os.access(p, flags):
+            result.append(p)
+        for e in exts:
+            pext = p + e
+            if os.access(pext, flags):
+                result.append(pext)
+    return result
 
 if __name__ == "__main__":
 
