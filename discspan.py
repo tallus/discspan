@@ -324,7 +324,7 @@ class Iso:
         output = open(temp_list, 'w')
         output.write(list)
         output.close()
-q
+
         if test :
             print 'Test write option enabled.'
             drive = '/dev/null'
@@ -342,8 +342,7 @@ q
                 burn_prog = genisoimage
             burn_cmd = "%s -o %s -V %s -A DiscSpan -p Unknown" \
                        " -iso-level 4 -l -r -hide-rr-moved -J -joliet-long" \
-                       " -graft-points" % (burn_prog, fork
-                               iso_file, volume_name)
+                       " -graft-points" % (burn_prog, iso_file, volume_name)
         else :
             burn_cmd = "growisofs -Z %s -speed=%s -use-the-force-luke=notray" \
                        " -use-the-force-luke=tty  " \
