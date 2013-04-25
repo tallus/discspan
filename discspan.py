@@ -337,9 +337,9 @@ class Iso:
                 iso_dir += "/"
             iso_file = iso_dir + volume_name + ".iso"
             if which('mkisofs'):
-                burn_prog = mkisofs
+                burn_prog = 'mkisofs'
             else:
-                burn_prog = genisoimage
+                burn_prog = 'genisoimage'
             burn_cmd = "%s -o %s -V %s -A DiscSpan -p Unknown" \
                        " -iso-level 4 -l -r -hide-rr-moved -J -joliet-long" \
                        " -graft-points" % (burn_prog, iso_file, volume_name)
